@@ -1,12 +1,44 @@
-import 'dotenv/config';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import { google } from 'googleapis';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import dotenv from 'dotenv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Explicitly load .env from multiple potential locations
+const envLocations = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(__dirname, '.env'),
+  path.resolve(process.cwd(), '../.env'),
+  path.resolve(process.cwd(), '../public_html/.env')
+];
+
+envLocations.forEach(envPath => {
+  if (fs.existsSync(envPath)) {
+    console.log(`Loading .env from: ${envPath}`);
+    dotenv.config({ path: envPath });
+  }
+});
+
+// Fallback: Try loading from secrets.json
+const secretsPath = path.resolve(__dirname, 'secrets.json');
+if (fs.existsSync(secretsPath)) {
+  try {
+    const secrets = JSON.parse(fs.readFileSync(secretsPath, 'utf-8'));
+    process.env.GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || secrets.GOOGLE_SHEET_ID;
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    process.env.GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY || secrets.GOOGLE_PRIVATE_KEY;
+    process.env.TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || secrets.TELEGRAM_BOT_TOKEN;
+    process.env.TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || secrets.TELEGRAM_CHAT_ID;
+    console.log('Loaded credentials from secrets.json');
+  } catch (e) {
+    console.error('Failed to load secrets.json', e);
+  }
+}
+
 const logFile = path.resolve(__dirname, 'server.log');
 
 function log(message: string, data?: any) {
@@ -20,6 +52,22 @@ function log(message: string, data?: any) {
   }
 }
 
+// Debug .env loading
+log(`Current working directory: ${process.cwd()}`);
+const envPath = path.resolve(process.cwd(), '.env');
+if (fs.existsSync(envPath)) {
+  log(`.env file found at: ${envPath}`);
+} else {
+  log(`.env file NOT found at: ${envPath}`);
+  // Try looking in __dirname as fallback
+  const fallbackEnvPath = path.resolve(__dirname, '.env');
+  if (fs.existsSync(fallbackEnvPath)) {
+    log(`.env file found at fallback: ${fallbackEnvPath}`);
+    // dotenv/config automatically loads from cwd, so we might need to manually load if it's elsewhere
+    // But usually on Hostinger cwd is the app root.
+  }
+}
+
 // Telegram Notification Function
 async function sendTelegramNotification(orderData: any) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -30,9 +78,15 @@ async function sendTelegramNotification(orderData: any) {
     return;
   }
 
-  const itemsList = orderData.cart.map((item: any) => 
-    `- ${item.quantity}x ${item.name} (${item.size})`
-  ).join('\n');
+  const itemsList = orderData.cart.map((item: any) => {
+    if (item.type === 'product') {
+      return `- ${item.quantity}x ${item.product?.name} (${item.size})`;
+    } else if (item.type === 'pack') {
+      const selections = item.packDetails?.selections?.map((p: any) => p.name).join(', ');
+      return `- ${item.quantity}x ${item.packDetails?.name} (${selections})`;
+    }
+    return `- ${item.quantity}x Unknown Item`;
+  }).join('\n');
 
   const message = `
 🔔 *NOUVELLE COMMANDE !*
@@ -88,11 +142,23 @@ async function startServer() {
 
       // Validate credentials
       // Hardcoding Sheet ID for debugging purposes as .env seems to be having issues in this context
-      const SHEET_ID = '1rdrNoEyuq8hZXCXhhgOLT3y-_QV7mhiyaC4MjWUUA3o';
+      let SHEET_ID = process.env.GOOGLE_SHEET_ID || '1rdrNoEyuq8hZXCXhhgOLT3y-_QV7mhiyaC4MjWUUA3o';
       
-      if (!SHEET_ID || !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-        log('Missing Google Sheets credentials');
-        return res.status(500).json({ error: 'Server configuration error: Missing credentials' });
+      // Extract ID if it's a full URL or contains extra parts
+      const match = SHEET_ID.match(/[-\w]{25,}/);
+      if (match) {
+        SHEET_ID = match[0];
+      }
+      
+      const missingVars = [];
+      if (!SHEET_ID) missingVars.push('GOOGLE_SHEET_ID');
+      if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) missingVars.push('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+      if (!process.env.GOOGLE_PRIVATE_KEY) missingVars.push('GOOGLE_PRIVATE_KEY');
+
+      if (missingVars.length > 0) {
+        const errorMsg = `Missing Google Sheets credentials: ${missingVars.join(', ')}`;
+        log(errorMsg);
+        return res.status(500).json({ error: 'Server configuration error', details: errorMsg });
       }
 
       log('Using credentials:', {
@@ -144,7 +210,15 @@ async function startServer() {
 
       const orderDate = new Date().toLocaleString('fr-FR');
       const orderId = '#' + Math.random().toString(36).substr(2, 6).toUpperCase();
-      const items = cart.map((item: any) => `${item.quantity}x ${item.name} (${item.size})`).join(', ');
+      const items = cart.map((item: any) => {
+        if (item.type === 'product') {
+          return `${item.quantity}x ${item.product?.name} (${item.size})`;
+        } else if (item.type === 'pack') {
+          const selections = item.packDetails?.selections?.map((p: any) => p.name).join(', ');
+          return `${item.quantity}x ${item.packDetails?.name} (${selections})`;
+        }
+        return `${item.quantity}x Unknown Item`;
+      }).join('\n');
       const status = 'En attente';
 
       const row = [orderId, name, phone, city, status, total, items];
@@ -153,6 +227,7 @@ async function startServer() {
       // Use single quotes around sheet name to handle spaces safely
       const range = `'${sheetName}'!A:G`;
 
+      log('Attempting to write to Google Sheets...');
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
         range: range,
@@ -162,16 +237,50 @@ async function startServer() {
         },
       });
 
-      console.log('Order saved successfully to Google Sheets');
+      log('Order saved successfully to Google Sheets');
 
       // Send Telegram Notification
+      log('Sending Telegram notification...');
       await sendTelegramNotification({ name, phone, city, cart, total });
+      log('Telegram notification sent');
 
       res.json({ success: true, orderId });
     } catch (error: any) {
       console.error('Error processing order:', error);
+      log(`CRITICAL ERROR: ${error.message}`);
+      if (error.response) {
+        log(`API Response Error: ${JSON.stringify(error.response.data)}`);
+      }
       res.status(500).json({ error: 'Failed to save order', details: error.message });
     }
+  });
+
+  // Diagnostic Endpoint (New)
+  app.get('/api/debug-env', (req, res) => {
+    const cwd = process.cwd();
+    const filesInCwd = fs.readdirSync(cwd);
+    
+    const envLocations = [
+      path.resolve(cwd, '.env'),
+      path.resolve(__dirname, '.env'),
+      path.resolve(cwd, '../.env'),
+      path.resolve(cwd, '../public_html/.env')
+    ];
+
+    const foundEnv = envLocations.find(p => fs.existsSync(p));
+
+    res.json({
+      status: 'ok',
+      cwd: cwd,
+      filesInCwd: filesInCwd,
+      envFileFoundAt: foundEnv || 'None',
+      envVars: {
+        GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID ? 'Set' : 'Missing',
+        GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ? 'Set' : 'Missing',
+        GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY ? 'Set' : 'Missing',
+        TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Missing',
+      }
+    });
   });
 
   // Vite middleware for development

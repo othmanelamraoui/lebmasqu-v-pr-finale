@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { products, Product } from '../data/products';
-import { Check, ChevronRight, RefreshCcw } from 'lucide-react';
+import { recommendations, Recommendation } from '../data/recommendations';
+import { Check, ChevronRight, RefreshCcw, Search } from 'lucide-react';
 
 // --- Types ---
 
@@ -76,7 +77,7 @@ const questions: Question[] = [
     options: [
       { id: 'fruit', text: { fr: "Fruits frais", en: "Fresh Fruits", ar: "فواكه طازجة" }, value: 'fresh' },
       { id: 'spice', text: { fr: "Épices chaudes", en: "Warm Spices", ar: "توابل دافئة" }, value: 'oriental' },
-      { id: 'sweet', text: { fr: "Douceurs sucrées", en: "Sweet Treats", ar: "حلويات" }, value: 'floral' }, // Gourmand often mapped to floral/oriental
+      { id: 'sweet', text: { fr: "Douceurs sucrées", en: "Sweet Treats", ar: "حلويات" }, value: 'floral' },
       { id: 'herbs', text: { fr: "Herbes aromatiques", en: "Aromatic Herbs", ar: "أعشاب عطرية" }, value: 'woody' },
     ]
   },
@@ -227,7 +228,7 @@ export default function QuizStartPage() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [resultProfile, setResultProfile] = useState<string>('');
   const [resultDescription, setResultDescription] = useState<string>('');
-  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+  const [recommendedProducts, setRecommendedProducts] = useState<Recommendation[]>([]);
 
   // Handle Language Selection
   const handleLanguageSelect = (lang: Language) => {
@@ -307,17 +308,20 @@ export default function QuizStartPage() {
     setResultProfile(profileNames[maxType][language]);
     setResultDescription(profileDescriptions[maxType][language]);
 
-    // Filter products based on profile
-    const filtered = products.filter(p => p.profile === maxType);
+    // Filter recommendations based on gender strictly first
+    const genderFiltered = recommendations.filter(p => p.gender === gender || p.gender === 'unisex');
+
+    // Then filter by profile
+    const profileMatches = genderFiltered.filter(p => p.profile === maxType);
     
-    // If we don't have enough exact matches, fill with others but prioritize matches
-    const others = products.filter(p => p.profile !== maxType);
+    // If we need more to reach 10, take from other profiles but same gender
+    const otherMatches = genderFiltered.filter(p => p.profile !== maxType);
     
-    // Combine: matches first, then others to fill up to 10 if needed (though we want relevant ones)
-    // For a better UX, maybe just show the matches if we have enough, or mix in some "close" ones.
-    // Given the request for "real suggestions", let's prioritize the matches.
+    // Combine: profile matches first, then others
+    let finalRecommendations = [...profileMatches, ...otherMatches];
     
-    setRecommendedProducts([...filtered, ...others].slice(0, 10));
+    // Limit to 10
+    setRecommendedProducts(finalRecommendations.slice(0, 10));
 
     setTimeout(() => {
       setStep('results');
@@ -443,12 +447,35 @@ export default function QuizStartPage() {
                     <div key={product.id} className="flex flex-col group">
                       <div className="relative aspect-[3/4] bg-[#F9F9F9] mb-4 overflow-hidden">
                         <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                        {!product.siteProductId && (
+                          <div className="absolute top-2 right-2 bg-white/90 px-2 py-1 text-[10px] uppercase tracking-widest font-bold">
+                            Référence
+                          </div>
+                        )}
                       </div>
-                      <h4 className="text-sm font-bold uppercase tracking-widest mb-1">{product.name}</h4>
-                      <p className="text-xs text-gray-500 mb-3">{product.notes.join(', ')}</p>
-                      <button className="mt-auto w-full py-3 border border-black text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-colors">
-                        {translations.buy[language]}
-                      </button>
+                      <h4 className="text-sm font-bold uppercase tracking-widest mb-1">{product.brand}</h4>
+                      <h5 className="text-xs font-medium uppercase tracking-widest mb-2 text-gray-600">{product.name}</h5>
+                      <p className="text-xs text-gray-500 mb-4">{product.notes.join(', ')}</p>
+                      
+                      {product.siteProductId ? (
+                        <Link to={`/parfums/${product.siteProductId}`} className="mt-auto w-full">
+                          <button className="w-full py-3 border border-black text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-colors">
+                            {translations.buy[language]}
+                          </button>
+                        </Link>
+                      ) : (
+                        <a 
+                          href={`https://www.google.com/search?q=parfum+${product.brand}+${product.name}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="mt-auto w-full"
+                        >
+                          <button className="w-full py-3 border border-gray-300 text-xs font-bold uppercase tracking-widest text-gray-400 hover:border-black hover:text-black transition-colors flex items-center justify-center gap-2">
+                            <Search className="w-3 h-3" />
+                            Découvrir
+                          </button>
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>

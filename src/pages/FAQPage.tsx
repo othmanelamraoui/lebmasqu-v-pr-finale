@@ -29,7 +29,7 @@ const faqs: FAQItem[] = [
   {
     category: 'products',
     question: "Comment choisir mon parfum sans le sentir ?",
-    answer: "Nous avons mis en place un Quiz Olfactif pour vous guider vers les parfums qui correspondent à vos goûts. De plus, chaque fiche produit détaille les notes olfactives et le style du parfum. Vous pouvez également opter pour notre Pack Découverte (3x30ml) pour tester plusieurs fragrances."
+    answer: "Nous avons mis en place un Quiz Olfactif pour vous guider vers les parfums qui correspondent à vos goûts. De plus, chaque fiche produit détaille les notes olfactives et le style du parfum. Vous pouvez également opter pour notre Pack Personnalisé (5x50ml) pour tester plusieurs fragrances."
   },
   {
     category: 'shipping',

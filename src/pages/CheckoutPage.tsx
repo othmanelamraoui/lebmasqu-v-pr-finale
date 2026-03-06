@@ -6,7 +6,7 @@ import Footer from '../components/Footer';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 
 export default function CheckoutPage() {
-  const { cart, cartTotal, clearCart, updateQuantity, removeFromCart } = useCart();
+  const { cart, cartTotal, clearCart, updateQuantity, removeFromCart, hasPack } = useCart();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
@@ -19,7 +19,7 @@ export default function CheckoutPage() {
     total: number;
   } | null>(null);
 
-  const shippingCost = cartTotal < 199 ? 30 : 0;
+  const shippingCost = (hasPack || cartTotal > 199) ? 0 : 25;
   const grandTotal = cartTotal + shippingCost;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,7 +93,11 @@ export default function CheckoutPage() {
               <ul className="space-y-3 mb-4">
                 {lastOrder.cart.map((item, index) => (
                   <li key={index} className="flex justify-between text-sm">
-                    <span>{item.quantity}x {item.name} ({item.size})</span>
+                    {item.type === 'product' ? (
+                      <span>{item.quantity}x {item.product?.name} ({item.size})</span>
+                    ) : (
+                      <span>{item.quantity}x {item.packDetails?.name} ({item.packDetails?.selections.map(p => p.name).join(', ')})</span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -146,21 +150,25 @@ export default function CheckoutPage() {
               <h2 className="text-xl font-bold uppercase mb-6">Résumé de la commande</h2>
               <ul className="space-y-6 mb-6">
                 {cart.map((item) => (
-                  <li key={`${item.id}-${item.size}`} className="flex flex-col border-b pb-4">
+                  <li key={item.id} className="flex flex-col border-b pb-4">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h3 className="font-bold text-sm uppercase">{item.name}</h3>
-                        <p className="text-xs text-gray-500">{item.size}</p>
+                        <h3 className="font-bold text-sm uppercase">
+                          {item.type === 'product' ? item.product?.name : item.packDetails?.name}
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          {item.type === 'product' ? item.size : item.packDetails?.selections.map(p => p.name).join(', ')}
+                        </p>
                       </div>
                       <span className="font-bold text-sm">
-                        {(item.size === '30ml' ? 69 : 99) * item.quantity} DHS
+                        {(item.type === 'product' ? 50 : (item.packDetails?.price || 0)) * item.quantity} DHS
                       </span>
                     </div>
                     
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center border border-gray-200 rounded-md">
                         <button 
-                          onClick={() => updateQuantity(item.id, item.size, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           className="p-1 hover:bg-gray-100 transition-colors"
                           disabled={item.quantity <= 1}
                         >
@@ -168,7 +176,7 @@ export default function CheckoutPage() {
                         </button>
                         <span className="px-3 text-xs font-bold w-8 text-center">{item.quantity}</span>
                         <button 
-                          onClick={() => updateQuantity(item.id, item.size, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           className="p-1 hover:bg-gray-100 transition-colors"
                         >
                           <Plus className="w-3 h-3" />
@@ -176,7 +184,7 @@ export default function CheckoutPage() {
                       </div>
                       
                       <button 
-                        onClick={() => removeFromCart(item.id, item.size)}
+                        onClick={() => removeFromCart(item.id)}
                         className="text-gray-400 hover:text-red-500 transition-colors p-1"
                         title="Supprimer"
                       >

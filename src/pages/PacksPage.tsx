@@ -6,19 +6,11 @@ import Footer from '../components/Footer';
 export default function PacksPage() {
   const packs = [
     {
-      id: 'pack-30ml',
-      name: 'Le Pack Découverte',
-      size: '3 x 30ml',
-      price: 199,
-      description: 'Idéal pour découvrir nos fragrances ou pour offrir. Composez votre trio signature.',
-      image: 'https://drive.google.com/thumbnail?id=1uVyZCElTNTzKw5PTTwkK2_2P0jG6mP4I&sz=w2560',
-    },
-    {
       id: 'pack-50ml',
-      name: 'Le Pack Prestige',
-      size: '3 x 50ml',
-      price: 279,
-      description: 'Pour les passionnés. Profitez de vos parfums préférés en format généreux.',
+      name: 'Le Pack Personnalisé',
+      size: '5 x 50ml',
+      price: 199,
+      description: 'Créez votre propre collection olfactive. Sélectionnez 5 parfums de votre choix.',
       image: 'https://drive.google.com/thumbnail?id=1cSmzKaMuIFiOhPcyNtXhX15ij8M55NL-&sz=w2560',
     }
   ];
@@ -51,14 +43,14 @@ export default function PacksPage() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="text-sm md:text-base text-gray-500 uppercase tracking-widest max-w-2xl mx-auto"
           >
-            Créez votre propre collection olfactive. Sélectionnez 3 parfums de votre choix.
+            Créez votre propre collection olfactive. Sélectionnez 5 parfums de votre choix.
             <br />
             <span className="font-bold text-black mt-2 block">Livraison gratuite sur tous les packs.</span>
           </motion.p>
         </div>
 
         {/* Packs Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-8 md:gap-16 max-w-2xl mx-auto">
           {packs.map((pack, index) => (
             <motion.div
               key={pack.id}

@@ -51,11 +51,12 @@ export default function AboutPage() {
           >
             <h2 className="text-3xl font-serif italic mb-8">Je suis LeBmasqué.</h2>
             <p className="text-lg leading-relaxed font-light text-gray-800">
-              Vous me connaissez peut-être déjà, ou peut-être pas. Peu importe. 
-              Dans un monde où l'image est reine et où l'ego prend souvent le pas sur le fond, 
-              j'ai fait le choix radical de l'effacement. Ce masque n'est pas un artifice de scène, 
-              c'est une décision stratégique : celle de séparer mon image publique de ce projet qui me tient à cœur, 
-              pour laisser toute la place à l'essentiel.
+              Au début, j'ai avancé masqué. Ce n'était pas un jeu, mais une volonté de m'effacer derrière l'essentiel : le parfum. 
+              Je voulais que vous jugiez mes créations pour ce qu'elles sont, sans a priori, sans l'influence d'un visage ou d'un nom.
+            </p>
+            <p className="text-lg leading-relaxed font-light text-gray-800 mt-4">
+              Aujourd'hui, j'ai décidé de tomber le masque et de me montrer à vous. Mais <strong>LeBmasqué</strong> reste. 
+              Ce nom n'est plus celui d'un homme caché, c'est devenu un symbole.
             </p>
             <div className="w-16 h-[1px] bg-black mx-auto opacity-20" />
           </motion.div>
@@ -138,9 +139,18 @@ export default function AboutPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-lg leading-relaxed font-light opacity-80"
             >
-              Le masque est un symbole de focus. En cachant le visage, on oblige le regard à se détourner de l'apparence pour se concentrer sur l'autre sens majeur : l'odorat.
-              Le masque est aussi un gage de vérité. Il n'y a pas d'influenceur, pas de star, pas de distraction. 
-              Il ne reste que le sillage. C'est une invitation à juger le parfum pour ce qu'il est vraiment, et non pour qui le porte.
+              Si je montre mon visage, pourquoi garder ce nom ? Parce que le masque a changé de sens. Il ne sert plus à me cacher, mais à révéler.
+            </motion.p>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="text-lg leading-relaxed font-light opacity-80 mt-6"
+            >
+              <strong>LeBmasqué</strong>, c'est désormais l'acte de démasquer la vérité sur l'industrie du parfum. 
+              Nous levons le voile sur les prix gonflés par le marketing, sur les flacons bijoux qui coûtent plus cher que le jus, sur l'illusion du luxe inaccessible.
+              Le masque est notre outil pour vous montrer ce qui compte vraiment : la qualité olfactive brute, sans artifice.
             </motion.p>
           </div>
         </section>

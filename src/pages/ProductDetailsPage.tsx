@@ -13,7 +13,6 @@ export default function ProductDetailsPage() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
-  const [size, setSize] = useState<'30ml' | '50ml'>('50ml');
   const [quantity, setQuantity] = useState(1);
   const [recommendations, setRecommendations] = useState<Product[]>([]);
   
@@ -54,16 +53,16 @@ export default function ProductDetailsPage() {
 
   if (!product) return null;
 
-  const price = size === '30ml' ? 69 : 99;
+  const price = 50;
 
   const handleAddToCart = () => {
-    addToCart(product, size, quantity);
+    addToCart(product, '50ml', quantity);
     // Optional: Show a toast or notification
-    console.log('Added to cart:', product.name, size, quantity);
+    console.log('Added to cart:', product.name, '50ml', quantity);
   };
 
   const handleOrderNow = () => {
-    addToCart(product, size, quantity);
+    addToCart(product, '50ml', quantity);
     navigate('/checkout');
   };
 
@@ -140,28 +139,12 @@ export default function ProductDetailsPage() {
               <div className="mb-10">
                 <h3 className="text-xs font-bold uppercase tracking-widest mb-4">Format</h3>
                 <div className="flex gap-4">
-                  <button 
-                    onClick={() => setSize('30ml')}
-                    className={`flex-1 py-4 border text-center transition-all duration-300 ${
-                      size === '30ml' 
-                        ? 'border-black bg-black text-white' 
-                        : 'border-gray-200 text-gray-400 hover:border-black hover:text-black'
-                    }`}
-                  >
-                    <span className="block text-sm font-bold uppercase tracking-widest mb-1">30 ML</span>
-                    <span className="block text-xs opacity-80">Découverte</span>
-                  </button>
-                  <button 
-                    onClick={() => setSize('50ml')}
-                    className={`flex-1 py-4 border text-center transition-all duration-300 ${
-                      size === '50ml' 
-                        ? 'border-black bg-black text-white' 
-                        : 'border-gray-200 text-gray-400 hover:border-black hover:text-black'
-                    }`}
+                  <div 
+                    className="flex-1 py-4 border text-center transition-all duration-300 border-black bg-black text-white"
                   >
                     <span className="block text-sm font-bold uppercase tracking-widest mb-1">50 ML</span>
                     <span className="block text-xs opacity-80">Standard</span>
-                  </button>
+                  </div>
                 </div>
               </div>
 
@@ -188,7 +171,7 @@ export default function ProductDetailsPage() {
               {/* Price & Add to Cart */}
               <div className="pt-8 border-t border-gray-100">
                 <div className="text-2xl font-bold mb-6">
-                  {price} DHS
+                  {price * quantity} DHS
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <button 

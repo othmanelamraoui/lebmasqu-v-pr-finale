@@ -1,5 +1,5 @@
+import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Menu, Search, X, ChevronDown } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';

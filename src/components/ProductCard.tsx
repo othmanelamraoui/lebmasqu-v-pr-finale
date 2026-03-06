@@ -5,26 +5,25 @@ import { Product } from '../data/products';
 import { useCart } from '../context/CartContext';
 import { getCollection, getCollectionLabel } from '../utils/productUtils';
 
-export default function ProductCard({ product }: { product: Product }) {
-  const [size, setSize] = useState<'30ml' | '50ml'>('50ml');
+const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const [quantity, setQuantity] = useState(1);
   const navigate = useNavigate();
   const { addToCart } = useCart();
-  const price = size === '30ml' ? 69 : 99;
+  const price = 50;
   
   const collection = getCollection(product);
   const showCollectionBadge = collection === 'niche' || collection === 'privee';
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addToCart(product, size, quantity);
+    addToCart(product, '50ml', quantity);
     // Optional: Show a toast or notification
-    console.log('Added to cart:', product.name, size, quantity);
+    console.log('Added to cart:', product.name, '50ml', quantity);
   };
 
   const handleOrderNow = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addToCart(product, size, quantity);
+    addToCart(product, '50ml', quantity);
     navigate('/checkout');
   };
 
@@ -62,18 +61,9 @@ export default function ProductCard({ product }: { product: Product }) {
         <p className="text-xs text-gray-500 tracking-widest uppercase">{product.category}</p>
         
         <div className="flex justify-center gap-3 mt-3 mb-2">
-           <button 
-             onClick={(e) => { e.stopPropagation(); setSize('30ml'); }}
-             className={`text-[10px] uppercase tracking-widest px-3 py-1 border transition-all duration-300 ${size === '30ml' ? 'border-black bg-black text-white' : 'border-gray-200 text-gray-400 hover:border-black hover:text-black'}`}
-           >
-             30ml
-           </button>
-           <button 
-             onClick={(e) => { e.stopPropagation(); setSize('50ml'); }}
-             className={`text-[10px] uppercase tracking-widest px-3 py-1 border transition-all duration-300 ${size === '50ml' ? 'border-black bg-black text-white' : 'border-gray-200 text-gray-400 hover:border-black hover:text-black'}`}
-           >
+           <span className="text-[10px] uppercase tracking-widest px-3 py-1 border border-black bg-black text-white">
              50ml
-           </button>
+           </span>
         </div>
 
         <div className="flex items-center justify-center gap-3 mb-2" onClick={(e) => e.stopPropagation()}>
@@ -111,4 +101,6 @@ export default function ProductCard({ product }: { product: Product }) {
       </div>
     </motion.div>
   );
-}
+};
+
+export default ProductCard;

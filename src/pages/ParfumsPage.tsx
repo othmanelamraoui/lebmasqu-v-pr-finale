@@ -10,6 +10,18 @@ import { getCollection, getCollectionLabel } from '../utils/productUtils';
 
 export default function ParfumsPage() {
   const [filter, setFilter] = useState<'all' | 'male' | 'female' | 'unisex'>('all');
+  
+  // Shuffle products once on mount to avoid "blocks" of categories in "All" view
+  const [shuffledProducts] = useState(() => {
+    const array = [...products];
+    // Fisher-Yates shuffle
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const collectionParam = searchParams.get('collection');
@@ -30,7 +42,7 @@ export default function ParfumsPage() {
     setCurrentPage(1);
   }, [filter, searchTerm]);
 
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = shuffledProducts.filter(product => {
     const matchesFilter = filter === 'all' || product.gender === filter;
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.notes.some(note => note.toLowerCase().includes(searchTerm.toLowerCase()));

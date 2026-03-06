@@ -1,18 +1,29 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { Product } from '../data/products';
 
-export interface CartItem extends Product {
-  size: '30ml' | '50ml';
+export interface CartItem {
+  id: string;
+  type: 'product' | 'pack';
+  product?: Product;
+  size?: '50ml';
   quantity: number;
+  packDetails?: {
+    packId: string;
+    name: string;
+    selections: Product[];
+    price: number;
+  };
 }
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (product: Product, size: '30ml' | '50ml', quantity?: number) => void;
-  removeFromCart: (productId: string, size: '30ml' | '50ml') => void;
-  updateQuantity: (productId: string, size: '30ml' | '50ml', quantity: number) => void;
+  addToCart: (product: Product, size?: '50ml', quantity?: number) => void;
+  addPackToCart: (packId: string, name: string, selections: Product[], price: number) => void;
+  removeFromCart: (itemId: string) => void;
+  updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
   cartTotal: number;
+  hasPack: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -20,37 +31,42 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  const addToCart = (product: Product, size: '30ml' | '50ml', quantity: number = 1) => {
+  const addToCart = (product: Product, size: '50ml' = '50ml', quantity: number = 1) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find(
-        (item) => item.id === product.id && item.size === size
+        (item) => item.type === 'product' && item.product?.id === product.id && item.size === size
       );
 
       if (existingItem) {
         return prevCart.map((item) =>
-          item.id === product.id && item.size === size
+          item.id === existingItem.id
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
 
-      return [...prevCart, { ...product, size, quantity }];
+      return [...prevCart, { id: `prod-${product.id}-${size}`, type: 'product', product, size, quantity }];
     });
   };
 
-  const removeFromCart = (productId: string, size: '30ml' | '50ml') => {
-    setCart((prevCart) =>
-      prevCart.filter((item) => !(item.id === productId && item.size === size))
-    );
+  const addPackToCart = (packId: string, name: string, selections: Product[], price: number) => {
+    setCart((prevCart) => {
+      const newId = `pack-${Date.now()}`;
+      return [...prevCart, { id: newId, type: 'pack', quantity: 1, packDetails: { packId, name, selections, price } }];
+    });
   };
 
-  const updateQuantity = (productId: string, size: '30ml' | '50ml', quantity: number) => {
+  const removeFromCart = (itemId: string) => {
+    setCart((prevCart) => prevCart.filter((item) => item.id !== itemId));
+  };
+
+  const updateQuantity = (itemId: string, quantity: number) => {
     setCart((prevCart) => {
       if (quantity <= 0) {
-        return prevCart.filter((item) => !(item.id === productId && item.size === size));
+        return prevCart.filter((item) => item.id !== itemId);
       }
       return prevCart.map((item) =>
-        item.id === productId && item.size === size
+        item.id === itemId
           ? { ...item, quantity }
           : item
       );
@@ -62,12 +78,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const cartTotal = cart.reduce((total, item) => {
-    const price = item.size === '30ml' ? 69 : 99;
-    return total + price * item.quantity;
+    if (item.type === 'product') {
+      return total + 50 * item.quantity; // 50 DHS for 50ml
+    } else if (item.type === 'pack' && item.packDetails) {
+      return total + item.packDetails.price * item.quantity;
+    }
+    return total;
   }, 0);
 
+  const hasPack = cart.some(item => item.type === 'pack');
+
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal }}>
+    <CartContext.Provider value={{ cart, addToCart, addPackToCart, removeFromCart, updateQuantity, clearCart, cartTotal, hasPack }}>
       {children}
     </CartContext.Provider>
   );
