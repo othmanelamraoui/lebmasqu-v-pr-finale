@@ -170,7 +170,7 @@ async function startServer() {
       // Handle private key with robust newline replacement
       let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
       
-      // Check if user accidentally pasted the entire JSON file content
+      // 1. Check if user accidentally pasted the entire JSON file content
       if (privateKey.trim().startsWith('{') && privateKey.trim().endsWith('}')) {
         try {
           const parsedJson = JSON.parse(privateKey);
@@ -182,30 +182,31 @@ async function startServer() {
         }
       }
       
-      // Remove surrounding quotes if present
-      if ((privateKey.startsWith('"') && privateKey.endsWith('"')) || 
-          (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
-        privateKey = privateKey.slice(1, -1);
-      }
+      // 2. Remove surrounding quotes if present
+      privateKey = privateKey.replace(/^["']|["']$/g, '');
       
-      // Replace literal \n with actual newlines
-      privateKey = privateKey.replace(/\\n/g, '\n');
+      // 3. Replace literal \n or \\n with actual newlines
+      privateKey = privateKey.replace(/\\+n/g, '\n');
       
-      // Extremely robust PEM rebuilding
-      // Find the base64 content by removing the headers, footers, spaces, and newlines
-      let base64Content = privateKey
-        .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-        .replace(/-----END PRIVATE KEY-----/g, '')
-        .replace(/\s+/g, ''); // Remove all whitespace (spaces, newlines, tabs)
-        
-      // Rebuild the PEM format correctly (64 characters per line)
-      const pemLines = [];
-      pemLines.push('-----BEGIN PRIVATE KEY-----');
-      for (let i = 0; i < base64Content.length; i += 64) {
-        pemLines.push(base64Content.substring(i, i + 64));
+      // 4. Fix PEM formatting
+      const beginTag = '-----BEGIN PRIVATE KEY-----';
+      const endTag = '-----END PRIVATE KEY-----';
+      
+      if (privateKey.includes(beginTag) && privateKey.includes(endTag)) {
+        // Extract the base64 body
+        const keyBody = privateKey
+          .substring(privateKey.indexOf(beginTag) + beginTag.length, privateKey.indexOf(endTag))
+          .replace(/\s+/g, ''); // Remove all whitespace, newlines, etc.
+          
+        // Re-chunk into 64-character lines
+        const chunks = keyBody.match(/.{1,64}/g) || [];
+        privateKey = `${beginTag}\n${chunks.join('\n')}\n${endTag}\n`;
+      } else {
+        // If tags are missing, assume it's just the base64 string
+        const keyBody = privateKey.replace(/\s+/g, '');
+        const chunks = keyBody.match(/.{1,64}/g) || [];
+        privateKey = `${beginTag}\n${chunks.join('\n')}\n${endTag}\n`;
       }
-      pemLines.push('-----END PRIVATE KEY-----');
-      privateKey = pemLines.join('\n');
 
       const auth = new google.auth.GoogleAuth({
         credentials: {
