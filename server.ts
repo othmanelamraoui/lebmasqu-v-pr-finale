@@ -184,6 +184,19 @@ async function startServer() {
         // Handle private key with robust newline replacement
         let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
         
+        // Final fallback: if the key is base64 encoded by the user to bypass Hostinger limits
+        if (privateKey && !privateKey.includes('PRIVATE KEY') && privateKey.length > 500) {
+          try {
+            const decoded = Buffer.from(privateKey, 'base64').toString('utf-8');
+            if (decoded.includes('PRIVATE KEY')) {
+              privateKey = decoded;
+              log('Successfully decoded base64 private key');
+            }
+          } catch (e) {
+            // Ignore if not valid base64
+          }
+        }
+        
         // 1. Check if user accidentally pasted the entire JSON file content
         if (privateKey.trim().startsWith('{') && privateKey.trim().endsWith('}')) {
           try {
