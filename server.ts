@@ -141,7 +141,6 @@ async function startServer() {
       }
 
       // Validate credentials
-      // Hardcoding Sheet ID for debugging purposes as .env seems to be having issues in this context
       let SHEET_ID = process.env.GOOGLE_SHEET_ID || '1rdrNoEyuq8hZXCXhhgOLT3y-_QV7mhiyaC4MjWUUA3o';
       
       // Extract ID if it's a full URL or contains extra parts
@@ -150,71 +149,86 @@ async function startServer() {
         SHEET_ID = match[0];
       }
       
-      const missingVars = [];
-      if (!SHEET_ID) missingVars.push('GOOGLE_SHEET_ID');
-      if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) missingVars.push('GOOGLE_SERVICE_ACCOUNT_EMAIL');
-      if (!process.env.GOOGLE_PRIVATE_KEY) missingVars.push('GOOGLE_PRIVATE_KEY');
+      const authOptions: any = {
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      };
 
-      if (missingVars.length > 0) {
-        const errorMsg = `Missing Google Sheets credentials: ${missingVars.join(', ')}`;
-        log(errorMsg);
-        return res.status(500).json({ error: 'Server configuration error', details: errorMsg });
-      }
-
-      log('Using credentials:', {
-        sheetId: SHEET_ID,
-        email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        keyLength: process.env.GOOGLE_PRIVATE_KEY?.length
-      });
-
-      // Handle private key with robust newline replacement
-      let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
+      const credsPath = path.resolve(process.cwd(), 'credentials.json');
+      const credsPathAlt = path.resolve(__dirname, 'credentials.json');
       
-      // 1. Check if user accidentally pasted the entire JSON file content
-      if (privateKey.trim().startsWith('{') && privateKey.trim().endsWith('}')) {
-        try {
-          const parsedJson = JSON.parse(privateKey);
-          if (parsedJson.private_key) {
-            privateKey = parsedJson.private_key;
-          }
-        } catch (e) {
-          log('Warning: GOOGLE_PRIVATE_KEY looks like JSON but could not be parsed');
-        }
-      }
-      
-      // 2. Remove surrounding quotes if present
-      privateKey = privateKey.replace(/^["']|["']$/g, '');
-      
-      // 3. Replace literal \n or \\n with actual newlines
-      privateKey = privateKey.replace(/\\+n/g, '\n');
-      
-      // 4. Fix PEM formatting
-      const beginTag = '-----BEGIN PRIVATE KEY-----';
-      const endTag = '-----END PRIVATE KEY-----';
-      
-      if (privateKey.includes(beginTag) && privateKey.includes(endTag)) {
-        // Extract the base64 body
-        const keyBody = privateKey
-          .substring(privateKey.indexOf(beginTag) + beginTag.length, privateKey.indexOf(endTag))
-          .replace(/\s+/g, ''); // Remove all whitespace, newlines, etc.
-          
-        // Re-chunk into 64-character lines
-        const chunks = keyBody.match(/.{1,64}/g) || [];
-        privateKey = `${beginTag}\n${chunks.join('\n')}\n${endTag}\n`;
+      if (fs.existsSync(credsPath)) {
+        log('Using credentials.json file from cwd');
+        authOptions.keyFile = credsPath;
+      } else if (fs.existsSync(credsPathAlt)) {
+        log('Using credentials.json file from __dirname');
+        authOptions.keyFile = credsPathAlt;
       } else {
-        // If tags are missing, assume it's just the base64 string
-        const keyBody = privateKey.replace(/\s+/g, '');
-        const chunks = keyBody.match(/.{1,64}/g) || [];
-        privateKey = `${beginTag}\n${chunks.join('\n')}\n${endTag}\n`;
-      }
+        // Fallback to environment variables
+        const missingVars = [];
+        if (!SHEET_ID) missingVars.push('GOOGLE_SHEET_ID');
+        if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) missingVars.push('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+        if (!process.env.GOOGLE_PRIVATE_KEY) missingVars.push('GOOGLE_PRIVATE_KEY');
 
-      const auth = new google.auth.GoogleAuth({
-        credentials: {
+        if (missingVars.length > 0) {
+          const errorMsg = `Missing Google Sheets credentials: ${missingVars.join(', ')}. Please provide them in .env or upload a credentials.json file.`;
+          log(errorMsg);
+          return res.status(500).json({ error: 'Server configuration error', details: errorMsg });
+        }
+
+        log('Using credentials from environment variables:', {
+          sheetId: SHEET_ID,
+          email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+          keyLength: process.env.GOOGLE_PRIVATE_KEY?.length
+        });
+
+        // Handle private key with robust newline replacement
+        let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
+        
+        // 1. Check if user accidentally pasted the entire JSON file content
+        if (privateKey.trim().startsWith('{') && privateKey.trim().endsWith('}')) {
+          try {
+            const parsedJson = JSON.parse(privateKey);
+            if (parsedJson.private_key) {
+              privateKey = parsedJson.private_key;
+            }
+          } catch (e) {
+            log('Warning: GOOGLE_PRIVATE_KEY looks like JSON but could not be parsed');
+          }
+        }
+        
+        // 2. Remove surrounding quotes if present
+        privateKey = privateKey.replace(/^["']|["']$/g, '');
+        
+        // 3. Replace literal \n or \\n with actual newlines
+        privateKey = privateKey.replace(/\\+n/g, '\n');
+        
+        // 4. Fix PEM formatting
+        const beginTag = '-----BEGIN PRIVATE KEY-----';
+        const endTag = '-----END PRIVATE KEY-----';
+        
+        if (privateKey.includes(beginTag) && privateKey.includes(endTag)) {
+          // Extract the base64 body
+          const keyBody = privateKey
+            .substring(privateKey.indexOf(beginTag) + beginTag.length, privateKey.indexOf(endTag))
+            .replace(/\s+/g, ''); // Remove all whitespace, newlines, etc.
+            
+          // Re-chunk into 64-character lines
+          const chunks = keyBody.match(/.{1,64}/g) || [];
+          privateKey = `${beginTag}\n${chunks.join('\n')}\n${endTag}\n`;
+        } else {
+          // If tags are missing, assume it's just the base64 string
+          const keyBody = privateKey.replace(/\s+/g, '');
+          const chunks = keyBody.match(/.{1,64}/g) || [];
+          privateKey = `${beginTag}\n${chunks.join('\n')}\n${endTag}\n`;
+        }
+
+        authOptions.credentials = {
           client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
           private_key: privateKey,
-        },
-        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-      });
+        };
+      }
+
+      const auth = new google.auth.GoogleAuth(authOptions);
 
       const sheets = google.sheets({ version: 'v4', auth });
 
@@ -292,7 +306,12 @@ async function startServer() {
   // Diagnostic Endpoint (New)
   app.get('/api/debug-env', (req, res) => {
     const cwd = process.cwd();
-    const filesInCwd = fs.readdirSync(cwd);
+    let filesInCwd: string[] = [];
+    try {
+      filesInCwd = fs.readdirSync(cwd);
+    } catch (e) {
+      filesInCwd = ['Error reading directory'];
+    }
     
     const envLocations = [
       path.resolve(cwd, '.env'),
@@ -302,16 +321,24 @@ async function startServer() {
     ];
 
     const foundEnv = envLocations.find(p => fs.existsSync(p));
+    
+    const credsPath = path.resolve(cwd, 'credentials.json');
+    const credsPathAlt = path.resolve(__dirname, 'credentials.json');
 
     res.json({
       status: 'ok',
       cwd: cwd,
+      dirname: __dirname,
       filesInCwd: filesInCwd,
       envFileFoundAt: foundEnv || 'None',
+      credentialsJsonFound: {
+        inCwd: fs.existsSync(credsPath),
+        inDirname: fs.existsSync(credsPathAlt)
+      },
       envVars: {
         GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID ? 'Set' : 'Missing',
         GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ? 'Set' : 'Missing',
-        GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY ? 'Set' : 'Missing',
+        GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY ? `Set (Length: ${process.env.GOOGLE_PRIVATE_KEY.length})` : 'Missing',
         TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Missing',
       }
     });
