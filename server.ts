@@ -191,9 +191,6 @@ async function startServer() {
       try {
         const scriptResponse = await fetch("https://script.google.com/macros/s/AKfycbwev6TsNi7En1abKRs9V85MkDPS0xHUFxLV1IlYJkqKs9qqDB6pZUDC-86ouZ7SQfElMw/exec", {
           method: "POST",
-          headers: {
-            "Content-Type": "text/plain;charset=utf-8"
-          },
           body: JSON.stringify(payload)
         });
         
