@@ -33,37 +33,50 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
     
     try {
-      console.log('Sending order to server...', { ...formData, cart, total: grandTotal });
+      const orderId = 'XN' + Math.random().toString(36).substr(2, 5).toUpperCase();
       
-      const response = await fetch('/api/orders', {
-        method: 'POST',
+      const items = cart.map((item: any) => {
+        if (item.type === 'product') {
+          return `${item.quantity}x ${item.product?.name} (${item.size})`;
+        } else if (item.type === 'pack') {
+          const selections = item.packDetails?.selections?.map((p: any) => p.name).join(', ');
+          return `${item.quantity}x ${item.packDetails?.name} (${selections})`;
+        }
+        return `${item.quantity}x Unknown Item`;
+      }).join('\n');
+
+      console.log('Sending order to Google Apps Script...');
+      
+      // We use mode: 'no-cors' to avoid CORS issues from the browser
+      await fetch("https://script.google.com/macros/s/AKfycbwev6TsNi7En1abKRs9V85MkDPS0xHUFxLV1IlYJkqKs9qqDB6pZUDC-86ouZ7SQfElMw/exec", {
+        method: "POST",
+        mode: "no-cors",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "text/plain;charset=utf-8"
         },
         body: JSON.stringify({
-          ...formData,
-          cart,
-          total: grandTotal,
-        }),
+          "commande numéro": orderId,
+          "nom": formData.name,
+          "telephone": formData.phone,
+          "ville": formData.city,
+          "état de commande": "en attente",
+          "montant": `${grandTotal} dhs`,
+          "item": items,
+        })
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        console.error('Server error:', result);
-        alert(`Erreur lors de l'enregistrement: ${result.details || result.error || 'Erreur inconnue'}`);
-      } else {
-        console.log('Order saved successfully:', result);
-        alert('Commande enregistrée avec succès !');
-        
-        setLastOrder({
-          cart: [...cart],
-          formData: { ...formData },
-          total: grandTotal
-        });
-        clearCart();
-        window.scrollTo(0, 0);
-      }
+      // With no-cors, we can't read the response, so we assume success if no network error is thrown
+      console.log('Order sent successfully');
+      alert('Commande enregistrée avec succès !');
+      
+      setLastOrder({
+        cart: [...cart],
+        formData: { ...formData },
+        total: grandTotal
+      });
+      clearCart();
+      window.scrollTo(0, 0);
+      
     } catch (error) {
       console.error('Network error:', error);
       alert('Erreur de connexion au serveur. Vérifiez votre connexion internet.');
