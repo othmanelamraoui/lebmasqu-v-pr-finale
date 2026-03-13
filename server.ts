@@ -16,16 +16,36 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const envLocations = [
   path.resolve(process.cwd(), '.env'),
   path.resolve(__dirname, '.env'),
+  path.resolve(__dirname, '../.env'),
   path.resolve(process.cwd(), '../.env'),
+  path.resolve(process.cwd(), '../../.env'),
   path.resolve(process.cwd(), '../public_html/.env')
 ];
 
-envLocations.forEach(envPath => {
+let envLoaded = false;
+for (const envPath of envLocations) {
   if (fs.existsSync(envPath)) {
-    console.log(`Loading .env from: ${envPath}`);
-    dotenv.config({ path: envPath });
+    console.log(`[ENV] Loading .env from: ${envPath}`);
+    try {
+      const envConfig = dotenv.parse(fs.readFileSync(envPath));
+      for (const k in envConfig) {
+        // Do not override PORT or NODE_ENV if they are already set by Hostinger
+        if (k !== 'PORT' && k !== 'NODE_ENV') {
+          process.env[k] = envConfig[k];
+        }
+      }
+      console.log(`[ENV] Successfully loaded variables from ${envPath}`);
+      envLoaded = true;
+      break;
+    } catch (err) {
+      console.error(`[ENV] Failed to load ${envPath}:`, err);
+    }
   }
-});
+}
+
+if (!envLoaded) {
+  console.log('[ENV] No .env file found in standard locations. Relying on system environment variables.');
+}
 
 // Fallback: Try loading from secrets.json
 const secretsPath = path.resolve(__dirname, 'secrets.json');
