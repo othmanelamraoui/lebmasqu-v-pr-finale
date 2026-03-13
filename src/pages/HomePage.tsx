@@ -44,7 +44,7 @@ export default function HomePage() {
         
         {/* Featured Section 1 */}
         <FullScreenSection 
-          image="https://drive.google.com/thumbnail?id=1lGjmZrvn09nMIvrVcXGTjwnluNfRFL-p&sz=w2560"
+          image="https://drive.google.com/thumbnail?id=11zOTRkj_ENZFvFHyWAVZ83mRlgSMyk-8&sz=w2560"
           title="Construit ton pack personnalisé"
           subtitle="Sélectionnez vos fragrances favorites pour une expérience unique."
           buttonText="Créer mon pack"
@@ -63,7 +63,7 @@ export default function HomePage() {
 
         {/* Quiz Invitation Section */}
         <FullScreenSection 
-          image="https://drive.google.com/thumbnail?id=1B6CneITAcUPiZ1RW70Q25p80I-tmm-b5&sz=w2560"
+          image="https://drive.google.com/thumbnail?id=1gXEGFP7ammqwkiP7HvGyb3JIpBJUyXeR&sz=w2560"
           title="Votre Signature Olfactive"
           subtitle="Répondez à quelques questions pour découvrir les parfums qui vous correspondent."
           buttonText="Commencer le Quiz"

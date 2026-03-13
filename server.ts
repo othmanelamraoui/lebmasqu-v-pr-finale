@@ -5,6 +5,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import multer from 'multer';
+
+// Configure multer for file uploads
+const upload = multer({ dest: 'uploads/' });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -313,6 +317,43 @@ async function startServer() {
         log(`API Response Error: ${JSON.stringify(error.response.data)}`);
       }
       res.status(500).json({ error: 'Failed to save order', details: error.message });
+    }
+  });
+
+  // Endpoint to upload credentials.json directly
+  app.post('/api/upload-credentials', upload.single('credentials'), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    try {
+      // Read the uploaded file
+      const fileContent = fs.readFileSync(req.file.path, 'utf8');
+      
+      // Validate it's valid JSON and looks like Google credentials
+      const parsed = JSON.parse(fileContent);
+      if (!parsed.private_key || !parsed.client_email) {
+        fs.unlinkSync(req.file.path); // Clean up
+        return res.status(400).json({ error: 'Invalid credentials file format. Missing private_key or client_email.' });
+      }
+
+      // Move it to the correct location
+      const targetPath = path.resolve(process.cwd(), 'credentials.json');
+      fs.renameSync(req.file.path, targetPath);
+      
+      log('Successfully uploaded and saved credentials.json');
+      
+      res.json({ 
+        status: 'success', 
+        message: 'Credentials saved successfully. The server will now use this file.',
+        path: targetPath
+      });
+    } catch (error) {
+      log('Error processing uploaded credentials:', error);
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path); // Clean up on error
+      }
+      res.status(500).json({ error: 'Failed to process credentials file', details: String(error) });
     }
   });
 

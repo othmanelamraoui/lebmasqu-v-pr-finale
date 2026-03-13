@@ -7,7 +7,7 @@ export default function Hero() {
       <div className="absolute inset-0 flex items-center justify-center">
         {/* Placeholder for a high-fashion minimalist image */}
         <img 
-          src="https://drive.google.com/thumbnail?id=1Zms8nhs8WvqEO2stVybH4swGrsKVsJWf&sz=w2560" 
+          src="https://drive.google.com/thumbnail?id=1JkeCxNwUq88pL3nEYkbBGeb7Rb5JwZhH&sz=w2560" 
           alt="Le Masqué Campaign" 
           className="w-full h-full object-cover object-[35%_center] md:object-center opacity-90 grayscale-[20%]"
         />

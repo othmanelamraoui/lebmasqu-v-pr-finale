@@ -18,20 +18,20 @@ export default function ComposePackPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
   
-  const packDetails = { name: 'Le Pack Personnalisé', size: '5 x 50ml', price: 199 };
+  const packDetails = { name: 'Le Pack Personnalisé', size: '3 x 50ml', price: 199 };
 
   const handleProductToggle = (product: Product) => {
     if (selectedProducts.find(p => p.id === product.id)) {
       setSelectedProducts(selectedProducts.filter(p => p.id !== product.id));
     } else {
-      if (selectedProducts.length < 5) {
+      if (selectedProducts.length < 3) {
         setSelectedProducts([...selectedProducts, product]);
       }
     }
   };
 
   const isSelected = (productId: string) => selectedProducts.some(p => p.id === productId);
-  const isFull = selectedProducts.length === 5;
+  const isFull = selectedProducts.length === 3;
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -64,7 +64,7 @@ export default function ComposePackPage() {
           <h1 className="text-3xl md:text-5xl font-serif italic mb-4">Composez votre {packDetails.name}</h1>
           <p className="text-sm uppercase tracking-widest text-gray-500 mb-2">{packDetails.size} — {packDetails.price} DHS</p>
           <p className="text-xs font-bold uppercase tracking-widest">
-            {selectedProducts.length} / 5 Sélectionnés
+            {selectedProducts.length} / 3 Sélectionnés
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export default function ComposePackPage() {
           <motion.div 
             className="h-full bg-black"
             initial={{ width: 0 }}
-            animate={{ width: `${(selectedProducts.length / 5) * 100}%` }}
+            animate={{ width: `${(selectedProducts.length / 3) * 100}%` }}
             transition={{ duration: 0.3 }}
           />
         </div>
@@ -233,7 +233,7 @@ export default function ComposePackPage() {
                     </button>
                   </div>
                 ))}
-                {Array.from({ length: 5 - selectedProducts.length }).map((_, i) => (
+                {Array.from({ length: 3 - selectedProducts.length }).map((_, i) => (
                   <div key={`empty-${i}`} className="w-10 h-10 rounded-full border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0">
                     <span className="text-gray-300 text-xs font-bold">{i + 1 + selectedProducts.length}</span>
                   </div>
@@ -255,7 +255,7 @@ export default function ComposePackPage() {
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  {isFull ? 'Ajouter' : `Choisir ${5 - selectedProducts.length}`}
+                  {isFull ? 'Ajouter' : `Choisir ${3 - selectedProducts.length}`}
                 </button>
               </div>
 

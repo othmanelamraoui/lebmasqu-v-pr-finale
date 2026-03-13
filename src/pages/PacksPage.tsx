@@ -8,10 +8,10 @@ export default function PacksPage() {
     {
       id: 'pack-50ml',
       name: 'Le Pack Personnalisé',
-      size: '5 x 50ml',
+      size: '3 x 50ml',
       price: 199,
-      description: 'Créez votre propre collection olfactive. Sélectionnez 5 parfums de votre choix.',
-      image: 'https://drive.google.com/thumbnail?id=1cSmzKaMuIFiOhPcyNtXhX15ij8M55NL-&sz=w2560',
+      description: 'Créez votre propre collection olfactive. Sélectionnez 3 parfums de votre choix.',
+      image: 'https://drive.google.com/thumbnail?id=1dhfpjm0HoC_insm-iyzjnyNcvofb55NT&sz=w2560',
     }
   ];
 
@@ -43,7 +43,7 @@ export default function PacksPage() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="text-sm md:text-base text-gray-500 uppercase tracking-widest max-w-2xl mx-auto"
           >
-            Créez votre propre collection olfactive. Sélectionnez 5 parfums de votre choix.
+            Créez votre propre collection olfactive. Sélectionnez 3 parfums de votre choix.
             <br />
             <span className="font-bold text-black mt-2 block">Livraison gratuite sur tous les packs.</span>
           </motion.p>
@@ -59,11 +59,11 @@ export default function PacksPage() {
               transition={{ duration: 0.6, delay: index * 0.2 }}
               className="group flex flex-col h-full"
             >
-              <Link to={`/compose-pack/${pack.id}`} className="relative w-full aspect-[4/5] overflow-hidden bg-[#F9F9F9] mb-8 block cursor-pointer">
+              <Link to={`/compose-pack/${pack.id}`} className="relative w-full aspect-[16/9] md:aspect-[2/1] overflow-hidden bg-[#F9F9F9] mb-8 block cursor-pointer flex items-center justify-center">
                 <img 
                   src={pack.image} 
                   alt={pack.name}
-                  className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                  className="w-full h-full object-contain object-center transition-transform duration-700 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
               </Link>
