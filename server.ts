@@ -164,135 +164,6 @@ async function startServer() {
         throw new Error('Invalid cart data');
       }
 
-      // Validate credentials
-      let SHEET_ID = process.env.GOOGLE_SHEET_ID || '1rdrNoEyuq8hZXCXhhgOLT3y-_QV7mhiyaC4MjWUUA3o';
-      
-      // Extract ID if it's a full URL or contains extra parts
-      const match = SHEET_ID.match(/[-\w]{25,}/);
-      if (match) {
-        SHEET_ID = match[0];
-      }
-      
-      const authOptions: any = {
-        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-      };
-
-      const credsPath = path.resolve(process.cwd(), 'credentials.json');
-      const credsPathAlt = path.resolve(__dirname, 'credentials.json');
-      
-      if (fs.existsSync(credsPath)) {
-        log('Using credentials.json file from cwd');
-        authOptions.keyFile = credsPath;
-      } else if (fs.existsSync(credsPathAlt)) {
-        log('Using credentials.json file from __dirname');
-        authOptions.keyFile = credsPathAlt;
-      } else {
-        // Fallback to environment variables
-        const missingVars = [];
-        if (!SHEET_ID) missingVars.push('GOOGLE_SHEET_ID');
-        if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) missingVars.push('GOOGLE_SERVICE_ACCOUNT_EMAIL');
-        if (!process.env.GOOGLE_PRIVATE_KEY) missingVars.push('GOOGLE_PRIVATE_KEY');
-
-        if (missingVars.length > 0) {
-          const errorMsg = `Missing Google Sheets credentials: ${missingVars.join(', ')}. Please provide them in .env or upload a credentials.json file.`;
-          log(errorMsg);
-          return res.status(500).json({ error: 'Server configuration error', details: errorMsg });
-        }
-
-        log('Using credentials from environment variables:', {
-          sheetId: SHEET_ID,
-          email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-          keyLength: process.env.GOOGLE_PRIVATE_KEY?.length
-        });
-
-        // Handle private key with robust newline replacement
-        let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
-        
-        // Final fallback: if the key is base64 encoded by the user to bypass Hostinger limits
-        if (privateKey && !privateKey.includes('PRIVATE KEY') && privateKey.length > 500) {
-          try {
-            const decoded = Buffer.from(privateKey, 'base64').toString('utf-8');
-            if (decoded.includes('PRIVATE KEY')) {
-              privateKey = decoded;
-              log('Successfully decoded base64 private key');
-            }
-          } catch (e) {
-            // Ignore if not valid base64
-          }
-        }
-        
-        // 1. Check if user accidentally pasted the entire JSON file content
-        if (privateKey.trim().startsWith('{') && privateKey.trim().endsWith('}')) {
-          try {
-            const parsedJson = JSON.parse(privateKey);
-            if (parsedJson.private_key) {
-              privateKey = parsedJson.private_key;
-            }
-          } catch (e) {
-            log('Warning: GOOGLE_PRIVATE_KEY looks like JSON but could not be parsed');
-          }
-        }
-        
-        // 2. Remove surrounding quotes if present
-        privateKey = privateKey.replace(/^["']|["']$/g, '');
-        
-        // 3. Replace literal \n or \\n with actual newlines
-        privateKey = privateKey.replace(/\\+n/g, '\n');
-        
-        // 4. Fix PEM formatting
-        const beginTag = '-----BEGIN PRIVATE KEY-----';
-        const endTag = '-----END PRIVATE KEY-----';
-        
-        if (privateKey.includes(beginTag) && privateKey.includes(endTag)) {
-          // Extract the base64 body
-          const keyBody = privateKey
-            .substring(privateKey.indexOf(beginTag) + beginTag.length, privateKey.indexOf(endTag))
-            .replace(/\s+/g, ''); // Remove all whitespace, newlines, etc.
-            
-          // Re-chunk into 64-character lines
-          const chunks = keyBody.match(/.{1,64}/g) || [];
-          privateKey = `${beginTag}\n${chunks.join('\n')}\n${endTag}\n`;
-        } else {
-          // If tags are missing, assume it's just the base64 string
-          const keyBody = privateKey.replace(/\s+/g, '');
-          const chunks = keyBody.match(/.{1,64}/g) || [];
-          privateKey = `${beginTag}\n${chunks.join('\n')}\n${endTag}\n`;
-        }
-
-        authOptions.credentials = {
-          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-          private_key: privateKey,
-        };
-      }
-
-      const auth = new google.auth.GoogleAuth(authOptions);
-
-      const sheets = google.sheets({ version: 'v4', auth });
-
-      // Get spreadsheet details
-      let spreadsheet;
-      try {
-        const response = await sheets.spreadsheets.get({
-          spreadsheetId: SHEET_ID,
-        });
-        spreadsheet = response.data;
-      } catch (err: any) {
-        console.error('Error accessing spreadsheet:', err.message);
-        if (err.code === 403) {
-           if (err.message.includes('Enable it by visiting') || err.message.includes('API has not been used')) {
-            throw new Error(`L'API Google Sheets n'est pas activée. Activez-la sur Google Cloud Console.`);
-          }
-          throw new Error(`Permission refusée. Vérifiez le partage avec : ${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}`);
-        } else if (err.code === 404) {
-          throw new Error('Spreadsheet introuvable. Vérifiez l\'ID.');
-        } else {
-          throw err;
-        }
-      }
-
-      const sheetName = spreadsheet.sheets?.[0]?.properties?.title || 'Sheet1';
-      console.log(`Target Sheet Name: "${sheetName}"`);
-
       const orderDate = new Date().toLocaleString('fr-FR');
       const orderId = '#' + Math.random().toString(36).substr(2, 6).toUpperCase();
       const items = cart.map((item: any) => {
@@ -304,25 +175,35 @@ async function startServer() {
         }
         return `${item.quantity}x Unknown Item`;
       }).join('\n');
-      const status = 'En attente';
+      const status = 'en attente';
 
-      const row = [orderId, name, phone, city, status, total, items];
-      console.log('Appending row:', row);
+      log('Attempting to write to Google Sheets via Apps Script...');
+      
+      const payload = {
+        "commande numéro": orderId,
+        "nom": name,
+        "telephone": phone,
+        "ville": city,
+        "état de commande": status,
+        "montant": `${total} dhs`,
+        "item": items
+      };
 
-      // Use single quotes around sheet name to handle spaces safely
-      const range = `'${sheetName}'!A:G`;
+      try {
+        const scriptResponse = await fetch("https://script.google.com/macros/s/AKfycbwev6TsNi7En1abKRs9V85MkDPS0xHUFxLV1IlYJkqKs9qqDB6pZUDC-86ouZ7SQfElMw/exec", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        
+        const scriptResult = await scriptResponse.text();
+        log('Google Apps Script response:', scriptResult);
+      } catch (fetchErr) {
+        log('Error calling Google Apps Script:', fetchErr);
+        // We might not want to fail the whole order if just the script fails, 
+        // but let's log it.
+      }
 
-      log('Attempting to write to Google Sheets...');
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SHEET_ID,
-        range: range,
-        valueInputOption: 'USER_ENTERED',
-        requestBody: {
-          values: [row],
-        },
-      });
-
-      log('Order saved successfully to Google Sheets');
+      log('Order processed via Google Apps Script');
 
       // Send Telegram Notification
       log('Sending Telegram notification...');
