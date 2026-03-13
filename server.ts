@@ -179,13 +179,14 @@ async function startServer() {
       log('Attempting to write to Google Sheets via Apps Script...');
       
       const payload = {
-        "Commande numéro": orderId,
-        "Nom complet": name,
-        "Téléphone": phone,
-        "Ville": city,
-        "État de commande": status,
-        "Montant": `${total} dhs`,
-        "Items": items
+        orderId: orderId,
+        name: name,
+        phone: phone,
+        city: city,
+        status: status,
+        total: `${total} dhs`,
+        items: items,
+        date: new Date().toLocaleString('fr-FR')
       };
 
       try {
